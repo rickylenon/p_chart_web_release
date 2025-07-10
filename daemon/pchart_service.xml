@@ -1,0 +1,35 @@
+<service>
+	<id>pchart_service.exe</id>
+	<name>pchart_service</name>
+	<description>P-Chart Web Production Management Application</description>
+	<executable>C:\nvm4w\nodejs\node.exe</executable>
+	<argument>--max_old_space_size=4096</argument>
+	<argument>C:\p_chart_web\node_modules\node-windows\lib\wrapper.js</argument>
+	<argument>--file</argument>
+	<argument>C:\p_chart_web\server-wrapper.js</argument>
+	<argument>--scriptoptions=</argument>
+	<argument>--log</argument>
+	<argument>pchart_service wrapper</argument>
+	<argument>--grow</argument>
+	<argument>0.25</argument>
+	<argument>--wait</argument>
+	<argument>1</argument>
+	<argument>--maxrestarts</argument>
+	<argument>3</argument>
+	<argument>--abortonerror</argument>
+	<argument>n</argument>
+	<argument>--stopparentfirst</argument>
+	<argument>undefined</argument>
+	<logmode>rotate</logmode>
+	<stoptimeout>30sec</stoptimeout>
+	<env name="NODE_ENV" value="production"/>
+	<env name="PORT" value="3000"/>
+	<env name="HOSTNAME" value="0.0.0.0"/>
+	<serviceaccount>
+		<domain>RICKYLENON4F32</domain>
+		<user>LocalSystem</user>
+		<password></password>
+		<allowservicelogon>true</allowservicelogon>
+	</serviceaccount>
+	<workingdirectory>C:\p_chart_web</workingdirectory>
+</service>

@@ -1,0 +1,116 @@
+# Dependencies
+node_modules/
+
+# Environment files (sensitive data)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory
+coverage/
+.nyc_output
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Backup files (your project has many of these)
+*.backup
+*.backup_*
+*.bak
+*.old
+server.js.backup_*
+package.json.backup_*
+
+# Production data (sensitive)
+/data/
+production-data*.sql
+defects_masterlist.csv
+lines.csv
+lines.xlsx
+operation_steps.csv
+standard_cost.csv
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+prisma/dev.db
+prisma/dev.db-journal
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Cache directories
+.npm
+.eslintcache
+.stylelintcache
+.cache
+.parcel-cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Package files
+*.tgz
+
+# Yarn files
+.yarn-integrity
+yarn.lock
+pnpm-lock.yaml
+
+# Local configuration
+local.env
+config.local.js
+config.local.json
+
+# Windows Service logs and process files
+daemon/logs/
+*.exe.config.log
+
+# Deployment artifacts that change frequently
+deployment/installers/
+*.msi
+*.exe 
+.next.*
+package.json.backup*
+server.js.backup*
+deployment/installers/
