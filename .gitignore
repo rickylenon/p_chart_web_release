@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 
 # Environment files (sensitive data)
@@ -43,9 +43,9 @@ coverage/
 ehthumbs.db
 Thumbs.db
 Desktop.ini
-$RECYCLE.BIN/
+.BIN/
 
-# Backup files (your project has many of these)
+# Backup files
 *.backup
 *.backup_*
 *.bak
@@ -114,3 +114,6 @@ deployment/installers/
 package.json.backup*
 server.js.backup*
 deployment/installers/
+
+# Update logs
+update-logs/
