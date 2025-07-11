@@ -89,22 +89,19 @@ Write-Host "DEPLOYMENT COMPLETED!" -ForegroundColor Green
 Write-Host "======================================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Cyan
-Write-Host "1. Install as Windows Service (requires Administrator):" -ForegroundColor White
-Write-Host "   .\service-manager.ps1 install" -ForegroundColor Yellow
+Write-Host "1. Start the application:" -ForegroundColor White
+Write-Host "   .\start.bat" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "2. Start the service:" -ForegroundColor White
-Write-Host "   .\service-manager.ps1 start" -ForegroundColor Yellow
+Write-Host "2. Application is ready to use at:" -ForegroundColor White
+Write-Host "   http://localhost:3000" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "3. Check service status:" -ForegroundColor White
-Write-Host "   .\service-manager.ps1 status" -ForegroundColor Yellow
+Write-Host "3. Manage the application using:" -ForegroundColor White
+Write-Host "   .\start.bat, .\stop.bat, .\restart.bat" -ForegroundColor Yellow
 Write-Host ""
-Write-Host "Service Management Commands:" -ForegroundColor Cyan
-Write-Host "  .\service-manager.ps1 install    # Install service (one-time)" -ForegroundColor White
-Write-Host "  .\service-manager.ps1 start      # Start service" -ForegroundColor White
-Write-Host "  .\service-manager.ps1 stop       # Stop service" -ForegroundColor White
-Write-Host "  .\service-manager.ps1 restart    # Restart service" -ForegroundColor White
-Write-Host "  .\service-manager.ps1 status     # Check status" -ForegroundColor White
-Write-Host "  .\service-manager.ps1 uninstall  # Remove service" -ForegroundColor White
+Write-Host "Application Management Commands:" -ForegroundColor Cyan
+Write-Host "  .\start.bat                      # Start application" -ForegroundColor White
+Write-Host "  .\stop.bat                       # Stop application" -ForegroundColor White
+Write-Host "  .\restart.bat                    # Restart application" -ForegroundColor White
 Write-Host ""
 Write-Host "Application URL: http://localhost:3000" -ForegroundColor Cyan
 Write-Host ""
