@@ -117,3 +117,5 @@ deployment/installers/
 
 # Update logs
 update-logs/
+
+.ssh/
