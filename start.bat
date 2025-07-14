@@ -18,7 +18,7 @@ if exist ".env" (
     echo Environment variables loaded
 ) else (
     echo No .env file found, using defaults
-    set DATABASE_URL=postgresql://pchart_user:pchart_password@localhost:5432/pchart_web
+    set DATABASE_URL=mysql://pchart_user:pchart_password@localhost:3306/pchart_web
     set NEXTAUTH_URL=http://localhost:3000
 )
 
