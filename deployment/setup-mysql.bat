@@ -99,6 +99,28 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+REM Run Prisma migrations to create table structure
+echo.
+echo Setting up database schema...
+if exist "node_modules\.bin\prisma.cmd" (
+    echo Running Prisma migrations...
+    node_modules\.bin\prisma.cmd migrate deploy
+    if %errorlevel% neq 0 (
+        echo ERROR: Prisma migration failed
+        echo This might be due to existing PostgreSQL migrations
+        echo Please remove the prisma\migrations directory and run:
+        echo   node_modules\.bin\prisma.cmd migrate dev --name init
+        pause
+        exit /b 1
+    )
+    echo SUCCESS: Database schema created successfully
+) else (
+    echo WARNING: Prisma CLI not found in node_modules\.bin\
+    echo Please run: npm install
+    echo Then manually run: node_modules\.bin\prisma.cmd migrate deploy
+    pause
+)
+
 echo.
 echo Database setup completed successfully!
 
