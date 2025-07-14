@@ -171,6 +171,19 @@ if (Test-Path $prismaClientSource) {
     }
 }
 
+# Copy database driver packages (needed for database scripts)
+$databasePackages = @("pg", "mysql2")
+foreach ($packageName in $databasePackages) {
+    $packageSource = "node_modules\$packageName"
+    $packageDest = Join-Path $ProductionPath "node_modules\$packageName"
+    if (Test-Path $packageSource) {
+        Copy-Item -Path $packageSource -Destination $packageDest -Recurse -Force
+        Write-Host "  Copied $packageName database driver" -ForegroundColor Gray
+    } else {
+        Write-Host "  WARNING: $packageName package not found" -ForegroundColor Yellow
+    }
+}
+
 # Note: Individual @prisma packages are now included in the complete folder copy above
 
 Write-Host "CLI tools and engines added successfully" -ForegroundColor Green
@@ -368,6 +381,17 @@ if (Test-Path "$ProductionPath\node_modules\prisma") {
     Write-Host "  prisma CLI: found" -ForegroundColor Green
 } else {
     Write-Host "  prisma CLI: MISSING" -ForegroundColor Yellow
+}
+
+# Verify database driver packages
+Write-Host "Verifying database drivers..." -ForegroundColor Cyan
+$databaseDrivers = @("pg", "mysql2")
+foreach ($driver in $databaseDrivers) {
+    if (Test-Path "$ProductionPath\node_modules\$driver") {
+        Write-Host "  $driver driver: found" -ForegroundColor Green
+    } else {
+        Write-Host "  $driver driver: MISSING" -ForegroundColor Yellow
+    }
 }
 
 Write-Host ""
