@@ -1,6 +1,6 @@
 {
   "name": "p_chart_web",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "private": true,
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
