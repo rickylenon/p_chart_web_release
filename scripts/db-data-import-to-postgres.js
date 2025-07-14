@@ -6,9 +6,14 @@ const path = require("path");
 const process = require("process");
 
 // Configuration
-const LOCAL_DATABASE_URL = process.env.DATABASE_URL ||
+const LOCAL_DATABASE_URL =
+  process.env.DATABASE_URL ||
   "postgresql://pchart_user:pchart_password@localhost:5432/pchart_web";
-const SQL_INPUT_FILE = path.join(process.cwd(), "data", "production-data-latest.sql");
+const SQL_INPUT_FILE = path.join(
+  process.cwd(),
+  "data",
+  "production-data-latest.sql"
+);
 
 // Create Prisma client for local database only
 const localPrisma = new PrismaClient({
@@ -41,55 +46,54 @@ function handleError(error, context) {
 async function executeSqlFile() {
   try {
     log("Checking for SQL input file...");
-    
+
     if (!fs.existsSync(SQL_INPUT_FILE)) {
       throw new Error(`SQL input file not found: ${SQL_INPUT_FILE}`);
     }
-    
+
     const fileStats = fs.statSync(SQL_INPUT_FILE);
     const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
     log(`Found SQL file: ${SQL_INPUT_FILE} (${fileSizeMB} MB)`);
-    
+
     log("Reading SQL file content...");
-    const sqlContent = fs.readFileSync(SQL_INPUT_FILE, 'utf8');
-    
+    const sqlContent = fs.readFileSync(SQL_INPUT_FILE, "utf8");
+
     if (!sqlContent || sqlContent.trim().length === 0) {
       throw new Error("SQL file is empty or contains no content");
     }
-    
+
     log(`SQL file loaded successfully (${sqlContent.length} characters)`);
-    
+
     // Split SQL content into individual statements
     log("Parsing SQL statements...");
     const statements = splitSqlStatements(sqlContent);
     log(`Found ${statements.length} SQL statements to execute`);
-    
+
     // Execute statements one by one
     log("Executing SQL statements...");
     let executedCount = 0;
-    
+
     for (let i = 0; i < statements.length; i++) {
       const statement = statements[i];
-      
+
       try {
         await localPrisma.$executeRawUnsafe(statement);
         executedCount++;
-        
+
         // Log progress for large operations
         if (executedCount % 100 === 0 || executedCount === statements.length) {
           log(`Executed ${executedCount}/${statements.length} statements`);
         }
-        } catch (error) {
+      } catch (error) {
         log(`Failed to execute statement ${i + 1}: ${error.message}`, "ERROR");
         log(`Statement: ${statement.substring(0, 200)}...`, "ERROR");
-    throw error;
-  }
-}
+        throw error;
+      }
+    }
 
     log(`✓ SQL file executed successfully (${executedCount} statements)`);
     return true;
-    
-        } catch (error) {
+  } catch (error) {
     handleError(error, "executeSqlFile");
     throw error;
   }
@@ -99,35 +103,38 @@ async function executeSqlFile() {
 function splitSqlStatements(sqlContent) {
   // Remove comments and split by semicolons
   const statements = [];
-  const lines = sqlContent.split('\n');
-  let currentStatement = '';
-  
+  const lines = sqlContent.split("\n");
+  let currentStatement = "";
+
   for (const line of lines) {
     const trimmedLine = line.trim();
-    
+
     // Skip empty lines and comments
-    if (!trimmedLine || trimmedLine.startsWith('--')) {
+    if (!trimmedLine || trimmedLine.startsWith("--")) {
       continue;
     }
-    
-    currentStatement += line + '\n';
-    
+
+    currentStatement += line + "\n";
+
     // If line ends with semicolon, it's the end of a statement
-    if (trimmedLine.endsWith(';')) {
+    if (trimmedLine.endsWith(";")) {
       const statement = currentStatement.trim();
-      if (statement && statement !== ';') {
+      if (statement && statement !== ";") {
         // Filter out problematic sequence reset for notifications table
         // since notifications table uses String ID (cuid) not integer sequence
         if (!statement.includes("notifications_id_seq")) {
           statements.push(statement);
         } else {
-          log(`Skipping problematic statement: ${statement.substring(0, 100)}...`, "WARN");
+          log(
+            `Skipping problematic statement: ${statement.substring(0, 100)}...`,
+            "WARN"
+          );
         }
       }
-      currentStatement = '';
+      currentStatement = "";
     }
   }
-  
+
   // Add any remaining statement
   if (currentStatement.trim()) {
     const statement = currentStatement.trim();
@@ -135,7 +142,7 @@ function splitSqlStatements(sqlContent) {
       statements.push(statement);
     }
   }
-  
+
   return statements;
 }
 
@@ -153,16 +160,18 @@ async function testConnection() {
     if (!fs.existsSync(SQL_INPUT_FILE)) {
       log(`✗ SQL input file not found: ${SQL_INPUT_FILE}`, "ERROR");
       log("Please run: node scripts/production-data-export.js", "ERROR");
-    return false;
+      return false;
     }
-    
+
     const fileStats = fs.statSync(SQL_INPUT_FILE);
     const fileSizeMB = (fileStats.size / 1024 / 1024).toFixed(2);
-    const fileAge = Math.round((Date.now() - fileStats.mtime.getTime()) / (1000 * 60)); // minutes
+    const fileAge = Math.round(
+      (Date.now() - fileStats.mtime.getTime()) / (1000 * 60)
+    ); // minutes
     log(`✓ SQL file found: ${fileSizeMB} MB, ${fileAge} minutes old`);
 
     return true;
-      } catch (error) {
+  } catch (error) {
     handleError(error, "testConnection");
     return false;
   }
@@ -192,7 +201,7 @@ async function syncProductionData() {
     // Get final record counts for reporting
     log("");
     log("Counting synchronized records...");
-    
+
     const counts = {
       users: await localPrisma.user.count(),
       masterDefects: await localPrisma.masterDefect.count(),
@@ -206,35 +215,39 @@ async function syncProductionData() {
     // Count optional tables if they exist
     try {
       counts.standardCosts = await localPrisma.standardCost.count();
-      } catch (e) {
+    } catch (e) {
       counts.standardCosts = 0;
-      }
+    }
 
-      try {
-      counts.editRequests = await localPrisma.operationDefectEditRequest.count();
-      } catch (e) {
+    try {
+      counts.editRequests =
+        await localPrisma.operationDefectEditRequest.count();
+    } catch (e) {
       counts.editRequests = 0;
-      }
+    }
 
-      try {
+    try {
       counts.notifications = await localPrisma.notification.count();
-      } catch (e) {
+    } catch (e) {
       counts.notifications = 0;
-      }
+    }
 
-      try {
+    try {
       counts.auditLogs = await localPrisma.auditLog.count();
-      } catch (e) {
+    } catch (e) {
       counts.auditLogs = 0;
     }
 
     try {
       counts.sessions = await localPrisma.session.count();
-      } catch (e) {
+    } catch (e) {
       counts.sessions = 0;
     }
 
-    const totalRecords = Object.values(counts).reduce((sum, count) => sum + count, 0);
+    const totalRecords = Object.values(counts).reduce(
+      (sum, count) => sum + count,
+      0
+    );
 
     const endTime = new Date();
     const duration = (endTime - startTime) / 1000; // seconds
@@ -244,7 +257,7 @@ async function syncProductionData() {
     log("Production Data Sync COMPLETED Successfully!");
     log(`Input file: ${SQL_INPUT_FILE}`);
     log(`Total records synchronized: ${totalRecords}`);
-    log(`Record counts:`)
+    log(`Record counts:`);
     Object.entries(counts).forEach(([table, count]) => {
       log(`  ${table}: ${count}`);
     });
