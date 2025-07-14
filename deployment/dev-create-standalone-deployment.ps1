@@ -171,14 +171,30 @@ if (Test-Path $prismaClientSource) {
     }
 }
 
-# Copy database driver packages (needed for database scripts)
-$databasePackages = @("pg", "mysql2")
+# Copy database driver packages and their dependencies (needed for database scripts)
+$databasePackages = @(
+    # PostgreSQL packages
+    "pg", "pg-cloudflare", "pg-connection-string", "pg-int8", 
+    "pg-pool", "pg-protocol", "pg-types", "pgpass",
+    "postgres-array", "postgres-bytea", "postgres-date", "postgres-interval",
+    # MySQL packages
+    "mysql2",
+    # Utility packages (common dependencies)
+    "xtend", "extend",
+    # Buffer and split utilities that database drivers often need
+    "buffer", "safe-buffer", "split2", "sqlstring", "lru.min", "denque", "long", "iconv-lite", "safer-buffer", "generate-function", "is-property"
+)
 foreach ($packageName in $databasePackages) {
     $packageSource = "node_modules\$packageName"
-    $packageDest = Join-Path $ProductionPath "node_modules\$packageName"
+    $packageParentDest = Join-Path $ProductionPath "node_modules"
     if (Test-Path $packageSource) {
-        Copy-Item -Path $packageSource -Destination $packageDest -Recurse -Force
-        Write-Host "  Copied $packageName database driver" -ForegroundColor Gray
+        # Ensure the node_modules directory exists
+        if (-not (Test-Path $packageParentDest)) {
+            New-Item -ItemType Directory -Path $packageParentDest -Force | Out-Null
+        }
+        # Copy to parent directory so PowerShell creates the correct structure
+        Copy-Item -Path $packageSource -Destination $packageParentDest -Recurse -Force
+        Write-Host "  Copied $packageName database package" -ForegroundColor Gray
     } else {
         Write-Host "  WARNING: $packageName package not found" -ForegroundColor Yellow
     }
