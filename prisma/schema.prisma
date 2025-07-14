@@ -189,8 +189,8 @@ model AuditLog {
   tableName String
   recordId  String
   action    String
-  oldValues String?
-  newValues String?
+  oldValues String?  @db.Text
+  newValues String?  @db.Text
   userId    Int
   timestamp DateTime @default(now())
   ipAddress String?
