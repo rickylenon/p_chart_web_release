@@ -1,5 +1,6 @@
-﻿# Dependencies
-node_modules/
+# Dependencies
+# node_modules/ - INCLUDED in release builds for production deployment
+# Production server cannot run npm install due to package restrictions
 
 # Environment files (sensitive data)
 .env

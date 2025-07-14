@@ -1,6 +1,6 @@
 @echo off
 REM =================================================================
-REM P-Chart Web - Automatic Update Script
+REM P-Chart Web - Automatic Update Script (Compatible with Manual Updates)
 REM =================================================================
 REM
 REM To set up as a scheduled task in Windows:
@@ -26,6 +26,28 @@ echo Checking for updates in P-Chart Web Application...
 REM Always work from production directory
 cd /d "C:\p_chart_web"
 
+REM Check if manual system update is in progress or recently applied
+if exist "temp\system-updates\MANUAL_UPDATE_ACTIVE" (
+    echo Manual system update in progress - skipping git pull
+    exit /b 0
+)
+
+if exist "temp\system-updates\MANUAL_UPDATE_APPLIED" (
+    echo Recent manual update detected - checking if safe to pull...
+    
+    REM Check if manual update was applied in last 24 hours
+    for /f %%i in ('powershell -command "(Get-Date) - (Get-Item 'temp\system-updates\MANUAL_UPDATE_APPLIED').LastWriteTime | Select-Object -ExpandProperty TotalHours"') do (
+        if %%i lss 24 (
+            echo Manual update too recent - skipping git pull for safety
+            echo To force git pull, delete: temp\system-updates\MANUAL_UPDATE_APPLIED
+            exit /b 0
+        )
+    )
+    
+    echo Manual update is old enough - proceeding with git pull
+    del "temp\system-updates\MANUAL_UPDATE_APPLIED" >nul 2>&1
+)
+
 REM Store current commit hash
 for /f %%i in ('git rev-parse HEAD') do set "BEFORE_PULL=%%i"
 
@@ -41,6 +63,8 @@ echo Pulling changes...
 git pull
 if %ERRORLEVEL% neq 0 (
     echo Error: Failed to pull changes from repository
+    echo This might be due to local changes from manual updates
+    echo Consider using manual system update instead
     exit /b 1
 )
 
@@ -51,7 +75,7 @@ git rm --cached -r data/ >nul 2>&1
 git rm --cached -r logs/ >nul 2>&1
 git rm --cached *.log >nul 2>&1
 git rm --cached -r tmp/ >nul 2>&1
-git rm --cached -r temp/ >nul 2>&1
+git rm --cached -r temp/system-updates/ >nul 2>&1
 git rm --cached production-data*.sql >nul 2>&1
 git rm --cached *.backup >nul 2>&1
 git rm --cached *.bak >nul 2>&1
@@ -60,7 +84,9 @@ git rm --cached .eslintcache >nul 2>&1
 REM Reset staged changes (don't commit in production - it can't push)
 git reset HEAD >nul 2>&1
 
-REM Discard any local changes to keep production clean
+REM Only discard changes that are not from manual updates
+echo Cleaning up tracked files while preserving manual updates...
+git status --porcelain | findstr "^??" > temp_untracked.txt
 git checkout -- . >nul 2>&1
 
 REM Get new commit hash
@@ -68,10 +94,14 @@ for /f %%i in ('git rev-parse HEAD') do set "AFTER_PULL=%%i"
 
 REM Compare hashes to detect changes
 if not "!BEFORE_PULL!"=="!AFTER_PULL!" (
-    echo Changes detected - restarting application...
+    echo Git changes detected - restarting application...
+    echo GIT_UPDATE > temp\system-updates\UPDATE_SOURCE
     call ".\restart.bat"
 ) else (
-    echo No changes detected - application is up to date
+    echo No git changes detected - application is up to date
 )
+
+REM Cleanup
+if exist temp_untracked.txt del temp_untracked.txt >nul 2>&1
 
 endlocal 

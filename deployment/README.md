@@ -16,12 +16,6 @@ This guide covers the production deployment process for P-Chart Web application.
 - App user: `pchart_user`, password: `pchart_password`
 - Database: `pchart_web`
 
-**PostgreSQL** (Legacy - for migration reference):
-
-- Root user: `postgres`, password: `rootroot`
-- App user: `pchart_user`, password: `pchart_password`
-- Database: `pchart_web`
-
 ## Prerequisites
 
 ### PowerShell Execution Policy
@@ -47,11 +41,14 @@ Set-ExecutionPolicy Bypass -Scope Process
 From `C:\dev\p_chart_web\`:
 
 ```powershell
-# Create deployment bundle (builds and copies to C:\dev\p_chart_web_release by default)
-.\deployment\create-deployment-full.ps1
+# Create standalone deployment bundle (builds and copies to C:\dev\p_chart_web_release by default)
+.\deployment\dev-create-standalone-deployment.ps1
 
 # Alternative: Create directly to production directory
-.\deployment\create-deployment-full.ps1 -dir "C:\p_chart_web"
+.\deployment\dev-create-standalone-deployment.ps1 -dir "C:\p_chart_web"
+
+# Or create minimal update package
+.\deployment\dev-create-minimal-update.ps1
 ```
 
 This script:
@@ -64,20 +61,11 @@ This script:
 
 ### Step 2: Production Side - Setup Database
 
-Choose your database system:
-
-**For MySQL (Recommended)**:
+**Setup MySQL database**:
 
 ```batch
 # Setup MySQL database
 .\deployment\setup-mysql.bat
-```
-
-**For PostgreSQL (Legacy)**:
-
-```powershell
-# Setup PostgreSQL database
-.\deployment\setup-postgres.ps1
 ```
 
 ### Step 3: Production Side - Deploy Application
@@ -141,13 +129,6 @@ cd C:\p_chart_web
 3. Verify credentials: root/rootroot and pchart_user/pchart_password
 4. Run: `.\deployment\setup-mysql.bat`
 
-**For PostgreSQL (Legacy)**:
-
-1. Check PostgreSQL 17 is installed at: `C:\Program Files\PostgreSQL\17\`
-2. Check PostgreSQL service is running
-3. Verify credentials: postgres/rootroot and pchart_user/pchart_password
-4. Run: `.\deployment\setup-postgres.ps1`
-
 ### Application Issues
 
 1. Check `server.js` exists in `C:\p_chart_web`
@@ -176,24 +157,32 @@ C:\p_chart_web\
 ├── restart.bat            # Restart application
 ├── setup-autostart.bat    # Auto-start configuration
 └── deployment/
-    ├── setup-mysql.bat         # MySQL database setup
-    ├── reset-database-mysql.bat # MySQL database reset
-    ├── setup-postgres.ps1      # PostgreSQL database setup (legacy)
-    ├── reset-database.ps1      # PostgreSQL database reset (legacy)
-    ├── prisma.ps1              # Quick Prisma operations
-    └── README.md               # This file
+    ├── setup-mysql.bat              # MySQL database setup
+    ├── reset-database-mysql.bat     # MySQL database reset
+    ├── dev-create-standalone-deployment.ps1  # Development: Create standalone deployment
+    ├── dev-create-minimal-update.ps1 # Development: Create minimal update package
+    ├── pull.bat                     # Git pull with cleanup
+    ├── pull_setup.md               # Pull setup documentation
+    └── README.md                   # This file
 ```
 
-## Data Migration (PostgreSQL to MySQL)
+## Data Migration and Scripts
 
-If you're migrating from PostgreSQL to MySQL, use the provided migration scripts:
+The application includes various utility scripts for data management:
 
 ```bash
-# 1. Export data from PostgreSQL
-node scripts/db-data-export-postgres.js
+# Database testing and diagnostics
+node scripts/test-db-connection.ts
 
-# 2. Import data to MySQL
-node scripts/db-data-import-to-mysql.js
+# Generate test data for development
+node scripts/generate-test-data.ts
+
+# Export/import data between database systems
+node scripts/db-data-export-postgres.js   # Export from PostgreSQL
+node scripts/db-data-import-to-mysql.js   # Import to MySQL
+
+# Standard costs management
+node scripts/seed-standard-costs.ts
 ```
 
 These scripts handle:
@@ -205,26 +194,27 @@ These scripts handle:
 
 ## Quick Reference
 
-**Create Bundle**: `.\deployment\create-deployment-full.ps1`
+**Create Standalone Bundle**: `.\deployment\dev-create-standalone-deployment.ps1`
+**Create Update Package**: `.\deployment\dev-create-minimal-update.ps1`
 **Start Application**: `.\start.bat`
 **Stop Application**: `.\stop.bat`
 **Restart Application**: `.\restart.bat`
 **Setup Auto-start**: `.\setup-autostart.bat`
 
-**Database Setup (MySQL)**: `.\deployment\setup-mysql.bat`
-**Database Setup (PostgreSQL)**: `.\deployment\setup-postgres.ps1`
-**Database Reset (MySQL)**: `.\deployment\reset-database-mysql.bat`
-**Database Reset (PostgreSQL)**: `.\deployment\reset-database.ps1`
+**Database Setup**: `.\deployment\setup-mysql.bat`
+**Database Reset**: `.\deployment\reset-database-mysql.bat`
+**Git Pull with Cleanup**: `.\deployment\pull.bat`
 
 ## Additional Production Scripts
 
 - `.\deployment\setup-mysql.bat` - MySQL database setup
 - `.\deployment\reset-database-mysql.bat` - MySQL database reset
-- `.\deployment\setup-postgres.ps1` - PostgreSQL database setup (legacy)
-- `.\deployment\reset-database.ps1` - PostgreSQL database reset (legacy)
-- `.\deployment\prisma.ps1` - Quick schema update
+- `.\deployment\pull.bat` - Git pull with automatic cleanup
+- `.\scripts\test-db-connection.ts` - Database connection testing
+- `.\scripts\generate-test-data.ts` - Generate test data for development
 - `.\scripts\db-data-export-postgres.js` - Export data from PostgreSQL
 - `.\scripts\db-data-import-to-mysql.js` - Import data to MySQL
+- `.\scripts\seed-standard-costs.ts` - Standard costs management
 
 ## Security Notes
 
@@ -235,7 +225,30 @@ These scripts handle:
 
 ## Git Ignore Management
 
-The deployment process automatically manages `.gitignore` patterns for production:
+The deployment process automatically manages `.gitignore` patterns for the release repository:
+
+### .gitignore-release Conversion
+
+**Development Repository (`C:\dev\p_chart_web`)**:
+
+- Uses `.gitignore` (excludes `node_modules` for dev environment)
+- Contains `.gitignore-release` (template for release repository)
+
+**Release Repository (`C:\dev\p_chart_web_release`)**:
+
+- Uses `.gitignore` (converted from `.gitignore-release`)
+- Includes `node_modules` in the repository for production deployment
+
+**Conversion Process**:
+
+1. `dev-create-standalone-deployment.ps1` reads `.gitignore-release`
+2. Copies content to `.gitignore` in the release directory
+3. If `.gitignore-release` is missing, creates a default `.gitignore`
+
+**Key Differences**:
+
+- **Development `.gitignore`**: Excludes `node_modules/` (for npm install)
+- **Release `.gitignore`**: Includes `node_modules/` (for restricted production servers)
 
 ### Automatic Management
 
@@ -286,3 +299,38 @@ git checkout -- .
 - Always test ignore patterns in development before deploying
 - **Production is read-only**: No local commits are created (can't push anyway)
 - Production stays in clean state - no local changes or commits
+
+## MySQL Service Management
+
+### MySQL Service Commands
+
+Common MySQL service management commands:
+
+```cmd
+# Start MySQL service
+net start mysql80
+
+# Stop MySQL service
+net stop mysql80
+
+# Check MySQL service status
+sc query mysql80
+
+# Set MySQL service to start automatically
+sc config mysql80 start= auto
+
+# Set MySQL service to manual start
+sc config mysql80 start= demand
+```
+
+### MySQL Connection Testing
+
+Test MySQL connectivity:
+
+```cmd
+# Test connection with root user
+mysql -u root -p
+
+# Test connection with application user
+mysql -u pchart_user -p pchart_web
+```

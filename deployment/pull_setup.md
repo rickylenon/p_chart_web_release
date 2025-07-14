@@ -1,10 +1,102 @@
-# Git Pull Setup Guide with SSH Keys
+# Git Pull Setup Guide with SSH Keys (Compatible with Manual Updates)
 
-This guide explains how to set up secure git pulling between your environments:
+This guide explains how to set up secure git pulling for restricted production environments where npm install is blocked:
 
-- Development: Your development machine where you make changes
-- Release Build: `C:/dev/p_chart_web_release` - where you create production builds
-- Production: `C:/p_chart_web` - the actual production server where the app runs
+- **Development**: Your development machine where you make changes
+- **Release Build**: `C:/dev/p_chart_web_release` - where you create production builds with all dependencies
+- **Production**: `C:/p_chart_web` - the restricted production server (git access only)
+
+## Production Environment Constraints
+
+**Production servers have restricted network access:**
+
+- Cannot run `npm install` due to package blocking
+- Only git access is available
+- Cannot build or compile code
+
+**Solution: Complete Standalone Deployment**
+
+- Development builds the complete application on Windows (same platform as production)
+- Release repository includes the full `node_modules` directory
+- Production pulls ready-to-run applications
+
+## Deployment Flow
+
+```
+Development Environment
+    ↓ (build + create standalone)
+Release Repository (includes node_modules)
+    ↓ (git pull)
+Production Server (ready to run)
+```
+
+## Compatibility with Manual System Updates
+
+The git pull system is designed to work safely alongside the manual system update feature:
+
+- **Conflict Prevention**: Git pull automatically detects when manual updates are in progress and skips pulling
+- **Safety Timeout**: After a manual update, git pull waits 24 hours before resuming automatic pulls
+- **Manual Override**: You can force git pull by deleting the `temp/system-updates/MANUAL_UPDATE_APPLIED` marker file
+- **Update Source Tracking**: The system tracks whether updates came from git or manual uploads
+
+### Git Push Integration
+
+Manual updates now automatically push changes to the git repository when possible:
+
+**When Git Push Works:**
+
+- Manual updates are committed and pushed to the current branch
+- Future git pulls will include the manual changes (no conflicts)
+- All production instances can receive the same fixes via git pull
+- Full audit trail maintained in git history
+
+**When Git Push Fails:**
+
+- Manual updates are applied locally only
+- 24-hour safety timeout still applies to prevent conflicts
+- Manual updates may be overwritten by future git pulls
+
+**Git Configuration Status:**
+
+- The admin interface shows git configuration status before upload
+- Displays current branch, remote URL, and push access
+- Warns if git push won't work before applying updates
+
+**Benefits:**
+
+- Eliminates conflict issues between deployment methods
+- Provides persistence for emergency production fixes
+- Maintains git history for all changes
+
+## Standalone Deployment Process
+
+**Development Machine Steps:**
+
+1. **Build the application**: `npm run build`
+2. **Create standalone deployment**: `.\deployment\dev-create-standalone-deployment.ps1`
+3. **Push to release repository**: The script handles git operations
+
+**What's Included in Release:**
+
+- Built Next.js application
+- Complete `node_modules` directory (all dependencies)
+- Production configuration files
+- Database schema and migrations
+- Standalone server file
+
+**Benefits:**
+
+- **No Network Dependencies**: Production doesn't need npm registry access
+- **Platform Compatibility**: Built on same Windows platform as production
+- **Complete Package**: Everything needed to run is included
+- **Faster Deployment**: No build or install time on production
+- **Reproducible**: Exact same dependencies every time
+
+## Repository Size Considerations
+
+- **Release Repository**: ~320MB (includes node_modules)
+- **Development Repository**: ~10MB (excludes node_modules)
+- **Git LFS**: Consider using Git Large File Storage for large binaries if needed
 
 ## 1. Development Environment Setup
 
@@ -212,3 +304,22 @@ To set up automatic updates using Windows Task Scheduler:
 3. For SSH key permission errors:
    - Verify key file permissions
    - Check key file paths in git config
+
+### Compatibility Issues
+
+1. If git pull is being skipped after manual updates:
+
+   - Check if `temp/system-updates/MANUAL_UPDATE_APPLIED` exists
+   - To force git pull, delete this file: `del "C:\p_chart_web\temp\system-updates\MANUAL_UPDATE_APPLIED"`
+   - The 24-hour safety timeout prevents conflicts between update methods
+
+2. If updates seem to conflict:
+
+   - Use either git pull OR manual updates for each deployment
+   - Check `temp/system-updates/UPDATE_SOURCE` to see which method was used last
+   - Manual updates take precedence over git pull during the safety window
+
+3. For mixed deployment states:
+   - Manual updates create local changes that git might want to overwrite
+   - The enhanced pull script preserves manual changes when possible
+   - Consider using one update method consistently for cleaner state management
