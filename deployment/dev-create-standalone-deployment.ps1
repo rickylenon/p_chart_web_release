@@ -246,6 +246,12 @@ if (Test-Path "apply-update.bat") {
     Write-Host "WARNING: apply-update.bat not found - system updates will fail!" -ForegroundColor Yellow
 }
 
+# Copy .git directory for repository sync via manual updates
+if (Test-Path ".git") {
+    Copy-Item -Path ".git" -Destination (Join-Path $ProductionPath ".git") -Recurse -Force
+    Write-Host "Copied .git directory (enables repository sync via manual updates)" -ForegroundColor Green
+}
+
 # Step 6: Convert .gitignore-release to .gitignore
 Write-Host "Converting .gitignore-release to .gitignore..." -ForegroundColor Cyan
 

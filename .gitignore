@@ -1,6 +1,7 @@
 # Dependencies
-# node_modules/ - INCLUDED in release builds for production deployment
-# Production server cannot run npm install due to package restrictions
+node_modules/
+# node_modules handled via manual updates only (not git)
+# This keeps git operations fast and prevents dependency conflicts
 
 # Environment files (sensitive data)
 .env

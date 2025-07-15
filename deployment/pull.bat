@@ -63,8 +63,34 @@ echo Pulling changes...
 git pull
 if %ERRORLEVEL% neq 0 (
     echo Error: Failed to pull changes from repository
-    echo This might be due to local changes from manual updates
-    echo Consider using manual system update instead
+    echo.
+    echo Checking for merge conflicts...
+    git status | find "unmerged" >nul
+    if %ERRORLEVEL% equ 0 (
+        echo.
+        echo ===============================================
+        echo MERGE CONFLICT DETECTED
+        echo ===============================================
+        echo This usually happens when:
+        echo - Manual updates were applied recently
+        echo - Version numbers conflict between local and remote
+        echo.
+        echo TO RESOLVE:
+        echo 1. Check conflicts: git status
+        echo 2. Edit conflicted files (usually package.json)
+        echo 3. Remove conflict markers (^<^<^<^<^<^<^<, =======, ^>^>^>^>^>^>^>)
+        echo 4. Add resolved files: git add package.json
+        echo 5. Commit changes: git commit -m "Resolve merge conflict"
+        echo 6. Run pull.bat again
+        echo.
+        echo Or to reset to remote version:
+        echo   git reset --hard origin/main
+        echo   ^(WARNING: This will lose local manual updates^)
+        echo ===============================================
+    ) else (
+        echo This might be due to network issues or other git problems
+        echo Consider using manual system update instead
+    )
     exit /b 1
 )
 

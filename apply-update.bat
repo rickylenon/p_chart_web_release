@@ -72,8 +72,8 @@ if exist "%EXTRACTED_PATH%\%ROOT_DIR%\server.js" (
 echo Copying files from: %SOURCE_PATH%
 echo To: %PRODUCTION_PATH%
 
-REM Copy files, excluding .git, .env, and backup directories
-robocopy "%SOURCE_PATH%" "%PRODUCTION_PATH%" /E /XD .git backup temp .env.* /XF .env /R:3 /W:5
+REM Copy files, excluding .ssh, .env, and backup directories (.git now included for repo sync)
+robocopy "%SOURCE_PATH%" "%PRODUCTION_PATH%" /E /XD .ssh backup temp .env.* /XF .env /R:3 /W:5
 
 if %errorlevel% gtr 7 (
     echo ERROR: Failed to copy update files

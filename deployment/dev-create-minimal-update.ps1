@@ -192,6 +192,12 @@ if (Test-Path "apply-update.bat") {
     Write-Host "ERROR: apply-update.bat not found - system updates will fail!" -ForegroundColor Red
 }
 
+# Copy .git directory for repository sync via manual updates
+if (Test-Path ".git") {
+    Copy-Item -Path ".git" -Destination "$OutputPath/.git" -Recurse -Force
+    Write-Host "Copied .git directory (enables repository sync via manual updates)" -ForegroundColor Green
+}
+
 # Step 3: Create README for the update package
 $readmeContent = @"
 # P-Chart Web v$currentVersion Update Package
@@ -204,6 +210,7 @@ $readmeContent = @"
 - node_modules/* - Essential CLI tools and Prisma engines (.bin, @prisma, .prisma, database drivers)
 - prisma/* - Database schema and migrations
 - scripts/* - Database and utility scripts
+- .git/* - Repository state sync (eliminates git conflicts)
 - apply-update.bat - System update applicator script (required for system updates)
 - deploy-update.bat - Automated deployment script with Prisma client regeneration
 
@@ -399,6 +406,7 @@ Write-Host "  - public/* (public assets)" -ForegroundColor White
 Write-Host "  - node_modules/* (essential CLI tools and Prisma engines)" -ForegroundColor White
 Write-Host "  - prisma/* (database schema and migrations)" -ForegroundColor White
 Write-Host "  - scripts/* (database and utility scripts)" -ForegroundColor White
+Write-Host "  - .git/* (repository state sync - eliminates git conflicts)" -ForegroundColor White
 Write-Host "  - apply-update.bat (system update applicator - CRITICAL)" -ForegroundColor White
 Write-Host "  - README.md (installation guide)" -ForegroundColor White
 Write-Host ""
