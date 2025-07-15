@@ -1,14 +1,22 @@
-# P-Chart Web - Minimal Update Package Creator
-# This script creates a minimal update package by reading version from package.json
-# Compress-Archive -Path server.js,package.json,.next,public -DestinationPath ..\system-update-fixed-v2.0.4.zip -Force
+# P-Chart Web - Manual Update Package Creator
+# This script creates a manual update package by copying from the latest release directory
+# This ensures proper .git handling and consistency with standalone deployment
 
 param(
-    [string]$OutputPath = ""
+    [string]$OutputPath = "",
+    [string]$ReleaseSource = "C:\p_chart_web_release"
 )
 
 # Check if we're in the correct directory
 if (-not (Test-Path "package.json")) {
     Write-Host "ERROR: package.json not found. Please run this script from the project root directory." -ForegroundColor Red
+    exit 1
+}
+
+# Check if release source exists
+if (-not (Test-Path $ReleaseSource)) {
+    Write-Host "ERROR: Release source not found at $ReleaseSource" -ForegroundColor Red
+    Write-Host "Please run dev-create-standalone-deployment.ps1 first to create the release directory." -ForegroundColor Yellow
     exit 1
 }
 
@@ -28,10 +36,11 @@ if ([string]::IsNullOrEmpty($OutputPath)) {
 }
 
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "  P-Chart Web - Minimal Update Package Creator" -ForegroundColor Yellow
+Write-Host "  P-Chart Web - Manual Update Package Creator" -ForegroundColor Yellow
 Write-Host "  Version $currentVersion Update" -ForegroundColor Yellow
 Write-Host "======================================================" -ForegroundColor Cyan
-Write-Host "Creating minimal update package at: $OutputPath" -ForegroundColor Cyan
+Write-Host "Creating manual update package at: $OutputPath" -ForegroundColor Cyan
+Write-Host "Source: $ReleaseSource" -ForegroundColor Cyan
 
 # Remove existing update directory
 if (Test-Path $OutputPath) {
@@ -42,160 +51,141 @@ if (Test-Path $OutputPath) {
 # Create update directory
 New-Item -Path $OutputPath -ItemType Directory -Force | Out-Null
 
-# Step 1: Build Application
-Write-Host "Building application..." -ForegroundColor Cyan
-Write-Host "This may take a moment..." -ForegroundColor Gray
+# Step 1: Copy Essential Files from Release Directory
+Write-Host "Copying essential files from release directory..." -ForegroundColor Cyan
 
-# Check if node_modules exists
-if (-not (Test-Path "node_modules")) {
-    Write-Host "Installing dependencies..." -ForegroundColor White
-    npm install
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "ERROR: npm install failed" -ForegroundColor Red
-        exit 1
-    }
-}
-
-# Build the application
-npm run build
-# Check if build actually produced the required files (Next.js may return non-zero exit code for warnings)
-if (-not (Test-Path ".next/standalone/server.js")) {
-    Write-Host "ERROR: Build failed - server.js not found" -ForegroundColor Red
-    Write-Host "Build output should be in .next/standalone/server.js" -ForegroundColor Yellow
+# Copy main server file
+$serverSource = Join-Path $ReleaseSource "server.js"
+if (Test-Path $serverSource) {
+    Copy-Item -Path $serverSource -Destination "$OutputPath/server.js" -Force
+    Write-Host "server.js (main application)" -ForegroundColor Green
+} else {
+    Write-Host "ERROR: server.js not found in release directory" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Build completed successfully (warnings ignored)" -ForegroundColor Green
-
-# Step 2: Copy Essential Files Only
-Write-Host "Copying essential files for v$currentVersion update..." -ForegroundColor Cyan
-
-# Copy main server file (contains all compiled components)
-Copy-Item -Path ".next/standalone/server.js" -Destination "$OutputPath/server.js" -Force
-Write-Host "server.js (main application with Navigation/UserMenu fixes)" -ForegroundColor Green
-
-# Copy entire .next directory (contains all build artifacts)
-$nextSource = ".next"
+# Copy entire .next directory
+$nextSource = Join-Path $ReleaseSource ".next"
 $nextDest = "$OutputPath/.next"
 if (Test-Path $nextSource) {
     Copy-Item -Path $nextSource -Destination $nextDest -Recurse -Force
     Write-Host "Complete .next directory (all build artifacts)" -ForegroundColor Green
 } else {
-    Write-Host "WARNING: No .next directory found" -ForegroundColor Yellow
+    Write-Host "ERROR: .next directory not found in release directory" -ForegroundColor Red
+    exit 1
 }
 
-# Copy package.json (version update)
-Copy-Item -Path "package.json" -Destination "$OutputPath/package.json" -Force
-Write-Host "package.json (version $currentVersion)" -ForegroundColor Green
+# Copy package.json
+$packageSource = Join-Path $ReleaseSource "package.json"
+if (Test-Path $packageSource) {
+    Copy-Item -Path $packageSource -Destination "$OutputPath/package.json" -Force
+    Write-Host "package.json (version $currentVersion)" -ForegroundColor Green
+}
 
-# Copy public assets if they exist
-if (Test-Path "public") {
-    Copy-Item -Path "public" -Destination "$OutputPath/public" -Recurse -Force
+# Copy public assets
+$publicSource = Join-Path $ReleaseSource "public"
+if (Test-Path $publicSource) {
+    Copy-Item -Path $publicSource -Destination "$OutputPath/public" -Recurse -Force
     Write-Host "Public assets" -ForegroundColor Green
 }
 
-# Step 2.5: Add Essential CLI Tools and Prisma Engines (from standalone deployment)
-Write-Host "Adding essential CLI tools and Prisma engines..." -ForegroundColor Cyan
+# Step 2: Copy Essential CLI Tools and Prisma Engines
+Write-Host "Copying essential CLI tools and Prisma engines..." -ForegroundColor Cyan
 
-# Create node_modules directory structure
+# Copy node_modules (already contains all necessary Prisma engines and CLI tools)
+$nodeModulesSource = Join-Path $ReleaseSource "node_modules"
 $nodeModulesPath = "$OutputPath/node_modules"
-if (-not (Test-Path $nodeModulesPath)) {
-    New-Item -Path $nodeModulesPath -ItemType Directory -Force | Out-Null
-}
-
-# Copy entire .bin directory (includes all CLI tools)
-$binSource = "node_modules\.bin"
-$binDest = Join-Path $nodeModulesPath ".bin"
-if (Test-Path $binSource) {
-    Copy-Item -Path $binSource -Destination $binDest -Recurse -Force
-    $binCount = (Get-ChildItem -Path $binDest | Measure-Object).Count
-    Write-Host "  Copied entire .bin directory ($binCount tools)" -ForegroundColor Gray
-} else {
-    Write-Host "  WARNING: .bin directory not found" -ForegroundColor Yellow
-}
-
-# Copy Prisma CLI package
-$prismaPackageSource = "node_modules\prisma"
-$prismaPackageDest = Join-Path $nodeModulesPath "prisma"
-if (Test-Path $prismaPackageSource) {
-    Copy-Item -Path $prismaPackageSource -Destination $prismaPackageDest -Recurse -Force
-    Write-Host "  Copied Prisma CLI package" -ForegroundColor Gray
-}
-
-# Copy entire @prisma organization folder (complete Prisma ecosystem)
-$prismaOrgSource = "node_modules\@prisma"
-$prismaOrgDest = Join-Path $nodeModulesPath "@prisma"
-if (Test-Path $prismaOrgSource) {
-    Copy-Item -Path $prismaOrgSource -Destination $prismaOrgDest -Recurse -Force
-    $prismaPackages = (Get-ChildItem -Path $prismaOrgDest -Directory | Measure-Object).Count
-    Write-Host "  Copied complete @prisma folder structure ($prismaPackages packages)" -ForegroundColor Gray
-}
-
-# Copy .prisma generated client directory (CRITICAL for engines)
-$prismaClientSource = "node_modules\.prisma"
-$prismaClientDest = Join-Path $nodeModulesPath ".prisma"
-if (Test-Path $prismaClientSource) {
-    Copy-Item -Path $prismaClientSource -Destination $prismaClientDest -Recurse -Force
-    Write-Host "  Copied .prisma generated client with engines" -ForegroundColor Gray
-} else {
-    Write-Host "  WARNING: .prisma client not found - generating..." -ForegroundColor Yellow
-    & npx prisma generate
+if (Test-Path $nodeModulesSource) {
+    # Copy essential components from node_modules
+    if (-not (Test-Path $nodeModulesPath)) {
+        New-Item -Path $nodeModulesPath -ItemType Directory -Force | Out-Null
+    }
+    
+    # Copy .bin directory
+    $binSource = Join-Path $nodeModulesSource ".bin"
+    $binDest = Join-Path $nodeModulesPath ".bin"
+    if (Test-Path $binSource) {
+        Copy-Item -Path $binSource -Destination $binDest -Recurse -Force
+        $binCount = (Get-ChildItem -Path $binDest | Measure-Object).Count
+        Write-Host "  Copied .bin directory ($binCount tools)" -ForegroundColor Gray
+    }
+    
+    # Copy Prisma CLI package
+    $prismaPackageSource = Join-Path $nodeModulesSource "prisma"
+    $prismaPackageDest = Join-Path $nodeModulesPath "prisma"
+    if (Test-Path $prismaPackageSource) {
+        Copy-Item -Path $prismaPackageSource -Destination $prismaPackageDest -Recurse -Force
+        Write-Host "  Copied Prisma CLI package" -ForegroundColor Gray
+    }
+    
+    # Copy entire @prisma organization folder
+    $prismaOrgSource = Join-Path $nodeModulesSource "@prisma"
+    $prismaOrgDest = Join-Path $nodeModulesPath "@prisma"
+    if (Test-Path $prismaOrgSource) {
+        Copy-Item -Path $prismaOrgSource -Destination $prismaOrgDest -Recurse -Force
+        $prismaPackages = (Get-ChildItem -Path $prismaOrgDest -Directory | Measure-Object).Count
+        Write-Host "  Copied @prisma folder structure ($prismaPackages packages)" -ForegroundColor Gray
+    }
+    
+    # Copy .prisma generated client directory
+    $prismaClientSource = Join-Path $nodeModulesSource ".prisma"
+    $prismaClientDest = Join-Path $nodeModulesPath ".prisma"
     if (Test-Path $prismaClientSource) {
         Copy-Item -Path $prismaClientSource -Destination $prismaClientDest -Recurse -Force
-        Write-Host "  Generated and copied .prisma client" -ForegroundColor Gray
+        Write-Host "  Copied .prisma generated client with engines" -ForegroundColor Gray
     }
+    
+    # Copy database driver packages
+    $databasePackages = @(
+        "pg", "pg-cloudflare", "pg-connection-string", "pg-int8", 
+        "pg-pool", "pg-protocol", "pg-types", "pgpass",
+        "postgres-array", "postgres-bytea", "postgres-date", "postgres-interval",
+        "mysql2", "xtend", "extend", "buffer", "safe-buffer", "split2", 
+        "sqlstring", "lru.min", "denque", "long", "iconv-lite", "safer-buffer", 
+        "generate-function", "is-property"
+    )
+    foreach ($packageName in $databasePackages) {
+        $packageSource = Join-Path $nodeModulesSource $packageName
+        $packageDest = Join-Path $nodeModulesPath $packageName
+        if (Test-Path $packageSource) {
+            Copy-Item -Path $packageSource -Destination $packageDest -Recurse -Force
+            Write-Host "  Copied $packageName" -ForegroundColor Gray
+        }
+    }
+    
+    Write-Host "CLI tools and Prisma engines copied successfully" -ForegroundColor Green
 }
 
-# Copy database driver packages and their dependencies
-$databasePackages = @(
-    # PostgreSQL packages
-    "pg", "pg-cloudflare", "pg-connection-string", "pg-int8", 
-    "pg-pool", "pg-protocol", "pg-types", "pgpass",
-    "postgres-array", "postgres-bytea", "postgres-date", "postgres-interval",
-    # MySQL packages
-    "mysql2",
-    # Utility packages (common dependencies)
-    "xtend", "extend",
-    # Buffer and split utilities that database drivers often need
-    "buffer", "safe-buffer", "split2", "sqlstring", "lru.min", "denque", "long", "iconv-lite", "safer-buffer", "generate-function", "is-property"
-)
-foreach ($packageName in $databasePackages) {
-    $packageSource = "node_modules\$packageName"
-    $packageDest = Join-Path $nodeModulesPath $packageName
-    if (Test-Path $packageSource) {
-        Copy-Item -Path $packageSource -Destination $packageDest -Recurse -Force
-        Write-Host "  Copied $packageName database package" -ForegroundColor Gray
-    } else {
-        Write-Host "  WARNING: $packageName package not found" -ForegroundColor Yellow
-    }
-}
-
-Write-Host "CLI tools and Prisma engines added successfully" -ForegroundColor Green
-
-# Copy essential project files for database operations
-if (Test-Path "prisma") {
-    Copy-Item -Path "prisma" -Destination "$OutputPath/prisma" -Recurse -Force
+# Copy essential project files
+$prismaSource = Join-Path $ReleaseSource "prisma"
+if (Test-Path $prismaSource) {
+    Copy-Item -Path $prismaSource -Destination "$OutputPath/prisma" -Recurse -Force
     Write-Host "Copied prisma directory (schema and migrations)" -ForegroundColor Green
 }
 
-if (Test-Path "scripts") {
-    Copy-Item -Path "scripts" -Destination "$OutputPath/scripts" -Recurse -Force
-    $scriptCount = (Get-ChildItem -Path "scripts" -File | Measure-Object).Count
+$scriptsSource = Join-Path $ReleaseSource "scripts"
+if (Test-Path $scriptsSource) {
+    Copy-Item -Path $scriptsSource -Destination "$OutputPath/scripts" -Recurse -Force
+    $scriptCount = (Get-ChildItem -Path $scriptsSource -File | Measure-Object).Count
     Write-Host "Copied scripts directory ($scriptCount files)" -ForegroundColor Green
 }
 
 # Copy apply-update.bat (CRITICAL for system update mechanism)
-if (Test-Path "apply-update.bat") {
-    Copy-Item -Path "apply-update.bat" -Destination "$OutputPath/apply-update.bat" -Force
+$applyUpdateSource = Join-Path $ReleaseSource "apply-update.bat"
+if (Test-Path $applyUpdateSource) {
+    Copy-Item -Path $applyUpdateSource -Destination "$OutputPath/apply-update.bat" -Force
     Write-Host "Copied apply-update.bat (CRITICAL for system updates)" -ForegroundColor Green
 } else {
-    Write-Host "ERROR: apply-update.bat not found - system updates will fail!" -ForegroundColor Red
+    Write-Host "ERROR: apply-update.bat not found in release directory - system updates will fail!" -ForegroundColor Red
 }
 
 # Copy .git directory for repository sync via manual updates
-if (Test-Path ".git") {
-    Copy-Item -Path ".git" -Destination "$OutputPath/.git" -Recurse -Force
+$gitSource = Join-Path $ReleaseSource ".git"
+if (Test-Path $gitSource) {
+    Copy-Item -Path $gitSource -Destination "$OutputPath/.git" -Recurse -Force
     Write-Host "Copied .git directory (enables repository sync via manual updates)" -ForegroundColor Green
+} else {
+    Write-Host "WARNING: .git directory not found in release directory" -ForegroundColor Yellow
 }
 
 # Step 3: Create README for the update package
